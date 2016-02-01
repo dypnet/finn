@@ -9,33 +9,40 @@ class Scraper:
         self.root_url = root_url
         self.page_url = page_url
         
+    def __call__(self):
+
+        ad_links = self.get_ad_links(self.root_url+self.page_url)
+        for ad_url in ad_links:
+            print(ad_url)
+        
+        soup = self.get_soup(self.root_url+self.page_url)
+        for i in range(10):
+
+            next_page = self.get_next_page_url(soup)
+            soup = self.get_soup(next_page)
+
+            ad_links = self.get_ad_links(next_page)
+            for ad_url in ad_links:
+                print(ad_url)
+
 
     def get_soup(self, next_url=None):
 
         response = requests.get(next_url)
-        self.soup = bs4.BeautifulSoup(response.text,"lxml")
-        
+        soup = bs4.BeautifulSoup(response.text,"lxml")
+        return soup 
        
-    def get_next_page_url(self):
-        next_pages = [] 
-        
-        pages = self.soup.select('span.hidelt768')
+    def get_next_page_url(self,soup):
 
-        for links in pages: 
-            for link in links:
-                try:
-                    next_pages.append(self.root_url+link['href'])
-                    print(link['href'])
-                except:
-                    continue
-
-        return next_pages
+        next_page = self.root_url+soup.find(rel="next")['href']
+        return next_page
     
-    def scrape_page(self,first_page=None):
+    def get_ad_links(self,url):
        
         ad_links = []
-        self.get_soup(first_page)
-        ads = self.soup.select('div.flex-unit')
+        soup = self.get_soup(url)
+        ads = soup.select('div.flex-unit')
+
         for content in ads:
             try:
                 paid_ad = content.select('div.unoverflowify')[0].select('div.r-margin')[0].select('span.fleft')[0].get_text()
@@ -45,11 +52,11 @@ class Scraper:
                 print('Skipped paid ad')
                 continue
             else:
-                ad_links.append(content.select('a.userhistory')[0]['href'])
-        
-        for links in ad_links:
-            print(self.root_url+links)
+                ad_links.append(self.root_url+content.select('a.userhistory')[0]['href'])
 
+        return ad_links
+
+    #def scrape_ad(self, url):
 
 if __name__=='__main__':
 
@@ -57,5 +64,5 @@ if __name__=='__main__':
     page_url = '/bap/forsale/search.html?search_type=SEARCH_ID_BAP_ALL&sort=1'
     
     finn = Scraper(root_url,page_url)
-    finn.scrape_page(root_url+page_url)
+    finn()
 
